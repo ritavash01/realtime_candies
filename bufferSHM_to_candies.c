@@ -55,19 +55,24 @@ nb::ndarray<uint8_t> get_data_as_numpy_array(int binbeg, int binend) {
     }
     
     // Define block and bin locations for beginning and end of data
-    int binbeg_block_loc = binbeg / total_bin_in_FRBblock;
+    int binbeg_block_loc = binbeg / total_bin_in_FRBblock; //This will increment forever during the observation period and it is important for checking if SHM is overwritten
+    int binbeg_block_loc_cycle = binbeg_block_loc / 12 ; // This will cycle between 0 and 11
     int binbeg_bin_loc = binbeg % total_bin_in_FRBblock;
     int binend_block_loc = binend / total_bin_in_FRBblock;
+    int binend_block_loc_cycle = binend_block_loc / 12 ; 
     int binend_bin_loc = binend % total_bin_in_FRBblock;
-    int nBeams = BufRead->nBeams;
+    nBeams = BufRead->nBeams;
+    RecNum = dataBuffer_FRB->curRecord;
 
+
+if(0 =< RecNum - binbeg_block_loc < 12 ){
     // Calculate total size of data to retrieve
     size_t total_size = 0;
-    for (int block = binbeg_block_loc; block <= binend_block_loc; ++block) {
-        if (block == binbeg_block_loc) {
-            total_size += DataSize - bin_size * binbeg_bin_loc; // Start block
-        } else if (block == binend_block_loc) {
-            total_size += bin_size * binend_bin_loc; // End block
+    for (int block = binbeg_block_loc_cycle; block <= binend_block_loc_cycle; ++block) {
+        if (block == binbeg_block_loc_cycle) {
+            total_size += DataSize - bin_size * binbeg_bin_loc_cycle; // Start block
+        } else if (block == binend_block_loc_cycle) {
+            total_size += bin_size * binend_bin_loc_cycle; // End block
         } else {
             total_size += DataSize; // Full intermediate blocks
         }
@@ -83,13 +88,13 @@ nb::ndarray<uint8_t> get_data_as_numpy_array(int binbeg, int binend) {
 
     // Copy data into buffer
     size_t offset = 0;
-    for (int block = binbeg_block_loc; block <= binend_block_loc; ++block) {
+    for (int block = binbeg_block_loc_cycle; block <= binend_block_loc_cycle; ++block) {
         size_t segment_size;
-        if (block == binbeg_block_loc) {
-            segment_size = DataSize - bin_size * binbeg_bin_loc;
-            memcpy(buffer + offset, BufRead->data + (long)DataSize * block * NBeams + (long)binbeg_bin_loc * bin_size, segment_size);
-        } else if (block == binend_block_loc) {
-            segment_size = bin_size * binend_bin_loc;
+        if (block == binbeg_block_loc_cycle) {
+            segment_size = DataSize - bin_size * binbeg_bin_loc_cycle;
+            memcpy(buffer + offset, BufRead->data + (long)DataSize * block * NBeams + (long)binbeg_bin_loc_cycle * bin_size, segment_size);
+        } else if (block == binend_block_loc_cycle) {
+            segment_size = bin_size * binend_bin_loc_cycle;
             memcpy(buffer + offset, BufRead->data + (long)DataSize * block * NBeams, segment_size);
         } else {
             segment_size = DataSize;
@@ -98,8 +103,7 @@ nb::ndarray<uint8_t> get_data_as_numpy_array(int binbeg, int binend) {
         offset += segment_size;
     }
 
-    // Detach from shared memory
-    shmdt(BufRead);
+
 
     // Determine dimensions for reshaping: here, `nf` (frequency channels) is defined as NCHANNELS
     size_t nf = NCHANNELS;
@@ -110,7 +114,9 @@ nb::ndarray<uint8_t> get_data_as_numpy_array(int binbeg, int binend) {
 
     return result;
 }
+else{printf("Your data has been overwritten already")}  //Replace by better error messege
 
 NB_MODULE(your_module_name, m) {
     m.def("get_data_as_numpy_array", &get_data_as_numpy_array, "Retrieve data from shared memory as a NumPy array");
+}
 }
