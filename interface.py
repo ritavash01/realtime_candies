@@ -17,7 +17,7 @@ from candies.base import CandiesError, Candidate
 class Getrawdata: 
     
 
-    def getdatabuffer(): 
+    def getdatabuffer(count, offset): 
         data = shm_reader.get_data_as_numpy_array(count,offset)
 
         return data
@@ -62,20 +62,20 @@ class Getrawdata:
         nbegin = noffset - (nread - ncount) // 2
 
         if (nbegin >= 0) and (nbegin + nread) <= self.nt:
-            data = self.get(offset=nbegin, count=nread)
+            data = self.getdatabuffer(offset=nbegin, count=nread)
         elif nbegin < 0:
             if (nbegin + nread) <= self.nt:
-                d = self.get(offset=0, count=nread + nbegin)
+                d = self.getdatabuffer(offset=0, count=nread + nbegin)
                 dmedian = np.median(d, axis=1)
                 data = np.ones((self.nf, nread), dtype=self.dtype) * dmedian[:, None]
                 data[:, -nbegin:] = d
             else:
-                d = self.get(offset=0, count=self.nt)
+                d = self.getdatabuffer(offset=0, count=self.nt)
                 dmedian = np.median(d, axis=1)
                 data = np.ones((self.nf, nread), dtype=self.dtype) * dmedian[:, None]
                 data[:, -nbegin : -nbegin + self.nt] = d
         else:
-            d = self.get(offset=nbegin, count=self.nt - nbegin)
+            d = self.getdatabuffer(offset=nbegin, count=self.nt - nbegin)
             dmedian = np.median(d, axis=1)
             data = np.ones((self.nf, nread), dtype=self.dtype) * dmedian[:, None]
             data[:, : self.nt - nbegin] = d
