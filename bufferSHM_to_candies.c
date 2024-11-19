@@ -38,7 +38,7 @@ typedef struct {
 } Buffer;
 
 // Function to retrieve data as a NumPy array
-nb::ndarray<uint8_t> get_data_as_numpy_array(int binbeg, int binend) {
+nb::ndarray<uint8_t> get_data_as_numpy_array(int count, int offset) {
     int idbuf;
     Buffer *BufRead;
     idbuf = shmget(DasBufferKey, sizeof(Buffer), SHM_RDONLY);
@@ -54,7 +54,9 @@ nb::ndarray<uint8_t> get_data_as_numpy_array(int binbeg, int binend) {
         return nb::ndarray<uint8_t>();
     }
     
-    // Define block and bin locations for beginning and end of data
+    // Define block and bin locations for the beginning and end of data
+    int binbeg = offset;
+    int binend = count + offset; 
     int binbeg_block_loc = binbeg / total_bin_in_FRBblock; //This will increment forever during the observation period and it is important for checking if SHM is overwritten
     int binbeg_block_loc_cycle = binbeg_block_loc / 12 ; // This will cycle between 0 and 11
     int binbeg_bin_loc = binbeg % total_bin_in_FRBblock;
